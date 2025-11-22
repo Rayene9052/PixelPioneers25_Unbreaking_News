@@ -113,9 +113,11 @@ class ForensicService {
       const output = hiveResult.output;
 
       // Deepfake detection
+      // Note: Tous les scores sont normalisés pour représenter le niveau de manipulation (0-100)
+      // Plus le score est élevé, plus la manipulation est probable
       if (output.deepfake) {
         const deepfakeConfidence = output.deepfake.confidence || 0;
-        deepfakeScore = deepfakeConfidence > 0.5 ? 100 - (deepfakeConfidence * 100) : 50;
+        deepfakeScore = deepfakeConfidence * 100; // Score brut de manipulation (non inversé)
         
         if (deepfakeConfidence > 0.7) {
           signals.push('deepfake_high_confidence');
@@ -127,7 +129,7 @@ class ForensicService {
       // Error Level Analysis
       if (output.error_level_analysis) {
         const elaScore = output.error_level_analysis.score || 0;
-        errorLevelScore = elaScore * 100;
+        errorLevelScore = elaScore * 100; // Score brut de manipulation (non inversé)
         
         if (elaScore > 0.7) {
           signals.push('high_error_level');
@@ -139,7 +141,7 @@ class ForensicService {
       // Manipulation detection
       if (output.manipulation) {
         const manipScore = output.manipulation.confidence || 0;
-        manipulationScore = manipScore * 100;
+        manipulationScore = manipScore * 100; // Score brut de manipulation (non inversé)
         
         if (manipScore > 0.7) {
           signals.push('manipulation_detected');

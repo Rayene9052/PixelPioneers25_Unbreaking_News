@@ -112,8 +112,20 @@ interface AnalysisResult {
         url: string;
         title: string;
         date: string | null;
+        reliability?: {
+          score: number;
+          isReliable: boolean;
+          reasons: string[];
+          category: string;
+        };
       }>;
       occurrenceCount: number;
+      sourceReliability?: {
+        averageReliabilityScore: number;
+        reliableCount: number;
+        suspiciousCount: number;
+        analysis: string;
+      };
     };
     nlp: {
       score: number;

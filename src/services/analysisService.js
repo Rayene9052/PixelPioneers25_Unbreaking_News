@@ -2,6 +2,7 @@ import ForensicService from './forensicService.js';
 import OSINTService from './osintService.js';
 import NLPService from './nlpService.js';
 import HederaService from './hederaService.js';
+import SourceReliabilityService from './sourceReliabilityService.js';
 import { extractImageMetadata, extractVideoMetadata } from '../utils/metadataExtractor.js';
 import { calculateFileHash, extractVideoFrames, extractPDFImages } from '../utils/fileProcessor.js';
 import pdfParse from 'pdf-parse';
@@ -18,6 +19,7 @@ class AnalysisService {
     this.forensicService = new ForensicService(config.hiveApiKey);
     this.osintService = new OSINTService(config.serpApiKey);
     this.nlpService = new NLPService(config.openaiApiKey);
+    this.sourceReliabilityService = new SourceReliabilityService(config.openaiApiKey);
     this.hederaService = new HederaService(
       config.hederaAccountId,
       config.hederaPrivateKey,
@@ -39,6 +41,7 @@ class AnalysisService {
       forensic: null,
       metadata: null,
       osint: null,
+      sourceReliability: null,
       nlp: null,
       hedera: null,
       finalScore: 0,
@@ -61,6 +64,37 @@ class AnalysisService {
       // 4. Analyse OSINT (reverse image search)
       analysisResult.osint = await this.osintService.reverseImageSearch(imagePath);
       logger.info('Analyse OSINT terminée');
+
+      // 4.5. Vérification de la fiabilité des sources trouvées
+      if (analysisResult.osint.sources && analysisResult.osint.sources.length > 0) {
+        analysisResult.sourceReliability = await this.sourceReliabilityService.verifySources(
+          analysisResult.osint.sources
+        );
+        logger.info('Vérification de fiabilité des sources terminée');
+        
+        // Ajustement du score OSINT basé sur la fiabilité des sources
+        const reliabilityScore = analysisResult.sourceReliability.averageReliabilityScore;
+        const originalOSINTScore = analysisResult.osint.score;
+        // Pondération: 60% score OSINT original, 40% fiabilité des sources
+        analysisResult.osint.score = Math.round(originalOSINTScore * 0.6 + reliabilityScore * 0.4);
+        analysisResult.osint.reliabilityAnalysis = analysisResult.sourceReliability;
+        
+        // Mise à jour des sources avec les informations de fiabilité
+        if (analysisResult.sourceReliability.verifiedSources) {
+          analysisResult.osint.sources = analysisResult.sourceReliability.verifiedSources.map(vs => ({
+            ...vs,
+            reliability: vs.reliability
+          }));
+        }
+      } else {
+        analysisResult.sourceReliability = {
+          verifiedSources: [],
+          averageReliabilityScore: 50,
+          reliableCount: 0,
+          suspiciousCount: 0,
+          analysis: 'Aucune source à vérifier'
+        };
+      }
 
       // 5. Analyse NLP (si texte présent dans l'image via OCR)
       try {
@@ -129,7 +163,6 @@ class AnalysisService {
     logger.info('=== Démarrage de l\'analyse de vidéo ===');
     
     const tempDir = path.join(path.dirname(videoPath), 'temp_frames');
-    await fs.mkdir(tempDir, { recursive: true });
     
     const tempFiles = [];
     let analysisResult = {
@@ -139,6 +172,7 @@ class AnalysisService {
       forensic: null,
       metadata: null,
       osint: null,
+      sourceReliability: null,
       nlp: null,
       hedera: null,
       finalScore: 0,
@@ -146,6 +180,8 @@ class AnalysisService {
     };
 
     try {
+      // Création du dossier temporaire pour les frames (dans le try-catch)
+      await fs.mkdir(tempDir, { recursive: true });
       // 1. Calcul du hash
       analysisResult.hash = await calculateFileHash(videoPath);
       logger.info(`Hash calculé: ${analysisResult.hash.substring(0, 16)}...`);
@@ -180,6 +216,37 @@ class AnalysisService {
       // Agrégation des résultats OSINT
       analysisResult.osint = this.aggregateOSINTResults(successfulOsint);
       logger.info('Analyse OSINT terminée');
+
+      // 5.5. Vérification de la fiabilité des sources trouvées
+      if (analysisResult.osint.sources && analysisResult.osint.sources.length > 0) {
+        analysisResult.sourceReliability = await this.sourceReliabilityService.verifySources(
+          analysisResult.osint.sources
+        );
+        logger.info('Vérification de fiabilité des sources terminée');
+        
+        // Ajustement du score OSINT basé sur la fiabilité des sources
+        const reliabilityScore = analysisResult.sourceReliability.averageReliabilityScore;
+        const originalOSINTScore = analysisResult.osint.score;
+        // Pondération: 60% score OSINT original, 40% fiabilité des sources
+        analysisResult.osint.score = Math.round(originalOSINTScore * 0.6 + reliabilityScore * 0.4);
+        analysisResult.osint.reliabilityAnalysis = analysisResult.sourceReliability;
+        
+        // Mise à jour des sources avec les informations de fiabilité
+        if (analysisResult.sourceReliability.verifiedSources) {
+          analysisResult.osint.sources = analysisResult.sourceReliability.verifiedSources.map(vs => ({
+            ...vs,
+            reliability: vs.reliability
+          }));
+        }
+      } else {
+        analysisResult.sourceReliability = {
+          verifiedSources: [],
+          averageReliabilityScore: 50,
+          reliableCount: 0,
+          suspiciousCount: 0,
+          analysis: 'Aucune source à vérifier'
+        };
+      }
 
       // 6. Analyse NLP (OCR sur frames clés)
       try {
@@ -260,6 +327,7 @@ class AnalysisService {
       forensic: null,
       metadata: null,
       osint: null,
+      sourceReliability: null,
       nlp: null,
       pdfIntegrity: null,
       hedera: null,
@@ -298,12 +366,42 @@ class AnalysisService {
       if (pdfText.trim().length > 100) {
         analysisResult.osint = await this.osintService.searchText(pdfText);
         logger.info('Analyse OSINT terminée');
+        
+        // 5.5. Vérification de la fiabilité des sources trouvées
+        if (analysisResult.osint.sources && analysisResult.osint.sources.length > 0) {
+          analysisResult.sourceReliability = await this.sourceReliabilityService.verifySources(
+            analysisResult.osint.sources
+          );
+          logger.info('Vérification de fiabilité des sources terminée');
+          
+          // Ajustement du score OSINT basé sur la fiabilité des sources
+          const reliabilityScore = analysisResult.sourceReliability.averageReliabilityScore;
+          const originalOSINTScore = analysisResult.osint.score;
+          // Pondération: 60% score OSINT original, 40% fiabilité des sources
+          analysisResult.osint.score = Math.round(originalOSINTScore * 0.6 + reliabilityScore * 0.4);
+          analysisResult.osint.reliabilityAnalysis = analysisResult.sourceReliability;
+        } else {
+          analysisResult.sourceReliability = {
+            verifiedSources: [],
+            averageReliabilityScore: 50,
+            reliableCount: 0,
+            suspiciousCount: 0,
+            analysis: 'Aucune source à vérifier'
+          };
+        }
       } else {
         analysisResult.osint = {
           sources: [],
           score: 50,
           occurrenceCount: 0,
           description: 'Texte insuffisant pour recherche OSINT'
+        };
+        analysisResult.sourceReliability = {
+          verifiedSources: [],
+          averageReliabilityScore: 50,
+          reliableCount: 0,
+          suspiciousCount: 0,
+          analysis: 'Aucune source à vérifier'
         };
       }
 
@@ -466,7 +564,14 @@ class AnalysisService {
         occurrenceCount: analysis.osint?.occurrenceCount || 0,
         coherenceScore: analysis.osint?.coherenceScore || 50,
         earliestDate: analysis.osint?.earliestDate || null,
-        latestDate: analysis.osint?.latestDate || null
+        latestDate: analysis.osint?.latestDate || null,
+        sourceReliability: analysis.sourceReliability ? {
+          averageReliabilityScore: analysis.sourceReliability.averageReliabilityScore,
+          reliableCount: analysis.sourceReliability.reliableCount,
+          suspiciousCount: analysis.sourceReliability.suspiciousCount,
+          totalSources: analysis.sourceReliability.totalSources,
+          analysis: analysis.sourceReliability.analysis
+        } : null
       },
       nlp: {
         score: analysis.nlp?.score || 50,
@@ -502,6 +607,12 @@ class AnalysisService {
     if (analysis.osint?.occurrenceCount === 0) {
       report.redFlags.push('Aucune source trouvée en ligne');
     }
+    if (analysis.sourceReliability && analysis.sourceReliability.suspiciousCount > analysis.sourceReliability.reliableCount) {
+      report.redFlags.push(`${analysis.sourceReliability.suspiciousCount} source(s) suspecte(s) détectée(s)`);
+    }
+    if (analysis.sourceReliability && analysis.sourceReliability.averageReliabilityScore < 40) {
+      report.redFlags.push('Fiabilité moyenne des sources très faible');
+    }
     if (analysis.metadata?.inconsistencies?.length > 0) {
       report.redFlags.push(`${analysis.metadata.inconsistencies.length} incohérence(s) dans les métadonnées`);
     }
@@ -515,6 +626,12 @@ class AnalysisService {
     }
     if (analysis.osint?.occurrenceCount > 5) {
       report.crediblePoints.push(`Plusieurs sources trouvées (${analysis.osint.occurrenceCount})`);
+    }
+    if (analysis.sourceReliability && analysis.sourceReliability.reliableCount > 0) {
+      report.crediblePoints.push(`${analysis.sourceReliability.reliableCount} source(s) fiable(s) vérifiée(s)`);
+    }
+    if (analysis.sourceReliability && analysis.sourceReliability.averageReliabilityScore > 70) {
+      report.crediblePoints.push('Sources globalement fiables');
     }
     if (analysis.metadata?.hasMetadata && analysis.metadata.inconsistencies.length === 0) {
       report.crediblePoints.push('Métadonnées cohérentes et complètes');

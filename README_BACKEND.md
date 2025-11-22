@@ -6,6 +6,7 @@ Backend professionnel en Node.js/Express pour analyser la crédibilité de fichi
 
 - **Analyse Forensique** : Détection de manipulations, deepfakes et erreurs avec Hive AI
 - **Analyse OSINT** : Reverse image search et recherche de texte avec SerpAPI
+- **Vérification de Fiabilité des Sources** : Analyse de la crédibilité des sources trouvées avec OpenAI GPT
 - **Analyse Sémantique** : Détection de contradictions, propagande et contenu généré avec OpenAI GPT
 - **Traçabilité Blockchain** : Enregistrement des hash sur Hedera Hashgraph
 - **Extraction de Métadonnées** : Analyse EXIF et détection d'incohérences
@@ -151,8 +152,16 @@ Chaque analyse retourne un objet JSON complet avec :
 
 Le score final est calculé avec la pondération suivante :
 - **40%** : Analyse forensique (manipulation, deepfake, erreurs)
-- **40%** : Analyse OSINT (sources trouvées, cohérence)
+- **40%** : Analyse OSINT (sources trouvées, cohérence, **fiabilité des sources**)
 - **20%** : Analyse NLP (cohérence sémantique, contradictions)
+
+### Vérification de Fiabilité des Sources
+
+Après la détection des sources via OSINT, le système vérifie automatiquement la fiabilité de chaque source trouvée :
+- **Analyse du domaine** : Vérification des domaines de confiance (médias établis, institutions académiques, gouvernementales)
+- **Analyse GPT** : Évaluation approfondie de la réputation, du type de source et de la qualité éditoriale
+- **Score de fiabilité** : Chaque source reçoit un score de 0-100 et une catégorisation (média, académique, blog, etc.)
+- **Impact sur le score OSINT** : Le score OSINT est ajusté (60% score original, 40% fiabilité moyenne des sources)
 
 Une réduction supplémentaire peut être appliquée en cas d'incohérences dans les métadonnées.
 
