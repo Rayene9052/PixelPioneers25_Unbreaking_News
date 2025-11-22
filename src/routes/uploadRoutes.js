@@ -54,7 +54,8 @@ const upload = multer({
 
 // Initialisation du service d'analyse
 const analysisService = new AnalysisService({
-  hiveApiKey: process.env.HIVE_API_KEY,
+  hiveAccessKey: process.env.HIVE_ACCESS_KEY,
+  hiveSecretKey: process.env.HIVE_SECRET_KEY,
   serpApiKey: process.env.SERPAPI_KEY,
   openaiApiKey: process.env.OPENAI_API_KEY,
   hederaAccountId: process.env.HEDERA_ACCOUNT_ID,
@@ -164,7 +165,7 @@ router.get('/health', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     services: {
-      hive: !!process.env.HIVE_API_KEY,
+      hive: !!(process.env.HIVE_ACCESS_KEY && process.env.HIVE_SECRET_KEY),
       serpapi: !!process.env.SERPAPI_KEY,
       openai: !!process.env.OPENAI_API_KEY,
       hedera: !!(process.env.HEDERA_ACCOUNT_ID && process.env.HEDERA_PRIVATE_KEY)

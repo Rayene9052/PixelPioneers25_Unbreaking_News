@@ -16,7 +16,7 @@ import logger from '../config/logger.js';
  */
 class AnalysisService {
   constructor(config) {
-    this.forensicService = new ForensicService(config.hiveApiKey);
+    this.forensicService = new ForensicService(config.hiveAccessKey, config.hiveSecretKey);
     this.osintService = new OSINTService(config.serpApiKey);
     this.nlpService = new NLPService(config.openaiApiKey);
     this.sourceReliabilityService = new SourceReliabilityService(config.openaiApiKey);

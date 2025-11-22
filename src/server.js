@@ -84,7 +84,8 @@ async function startServer() {
     
     // Vérification des clés API
     const requiredEnvVars = [
-      'HIVE_API_KEY',
+      'HIVE_ACCESS_KEY',
+      'HIVE_SECRET_KEY',
       'SERPAPI_KEY',
       'OPENAI_API_KEY',
       'HEDERA_ACCOUNT_ID',

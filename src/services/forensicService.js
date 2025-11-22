@@ -5,8 +5,11 @@ import { readFileSync } from 'fs';
  * Service d'analyse forensique utilisant Hive AI
  */
 class ForensicService {
-  constructor(apiKey) {
-    this.apiKey = apiKey;
+  constructor(accessKey, secretKey) {
+    this.accessKey = accessKey;
+    this.secretKey = secretKey;
+    // Si seulement accessKey est fourni (rétrocompatibilité), on l'utilise comme apiKey
+    this.apiKey = accessKey || secretKey;
     this.baseUrl = 'https://api.thehive.ai/api/v2';
   }
 
@@ -21,10 +24,14 @@ class ForensicService {
       const base64Image = imageBuffer.toString('base64');
       
       // Appel à l'API Hive AI
+      // Utilisation de l'access key pour l'authentification
+      // Le secret key est disponible si nécessaire pour la signature des requêtes
+      const authToken = this.accessKey || this.apiKey;
+      
       const response = await fetch(`${this.baseUrl}/task/sync`, {
         method: 'POST',
         headers: {
-          'Authorization': `Token ${this.apiKey}`,
+          'Authorization': `Token ${authToken}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

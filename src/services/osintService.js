@@ -19,44 +19,60 @@ class OSINTService {
     try {
       logger.info('Démarrage du reverse image search...');
       
-      // Note: SerpAPI nécessite une URL d'image publique pour le reverse search
-      // Pour un hackathon, on peut utiliser une approche alternative:
-      // 1. Uploader l'image sur un service temporaire (imgur, etc.)
-      // 2. Utiliser l'URL pour la recherche
-      // Ici, on simule avec une recherche basée sur les métadonnées de l'image
-      
       const imageBuffer = readFileSync(imagePath);
+      const base64Image = imageBuffer.toString('base64');
       
-      // Pour une implémentation complète, il faudrait:
-      // - Uploader l'image sur un service temporaire
-      // - Utiliser l'URL dans SerpAPI avec engine: 'google_lens'
-      // Pour l'instant, on fait une recherche générique qui peut être améliorée
-      
-      // Alternative: utiliser Google Images avec des paramètres de recherche visuelle
-      // Cette approche nécessite que l'image soit déjà en ligne
-      // Pour un hackathon, on retourne une structure de base
-      
-      logger.warn('Reverse image search: implémentation de base. Pour production, uploader l\'image et utiliser l\'URL.');
-      
-      // Simulation d'une réponse (à remplacer par un vrai appel API)
-      const response = {
-        visual_matches: [],
-        organic_results: []
-      };
+      // Utilisation de SerpAPI avec Google Lens pour reverse image search
+      // SerpAPI supporte l'upload d'image via base64
+      try {
+        const response = await this.client.search({
+          engine: 'google_lens',
+          image: `data:image/jpeg;base64,${base64Image}`,
+          api_key: this.apiKey
+        });
 
-      const sources = this.extractSources(response);
-      const score = this.calculateOSINTScore(sources);
-      
-      logger.info(`Reverse image search terminé: ${sources.length} sources trouvées`);
-      
-      return {
-        sources,
-        score,
-        occurrenceCount: sources.length,
-        earliestDate: this.findEarliestDate(sources),
-        latestDate: this.findLatestDate(sources),
-        coherenceScore: this.calculateCoherenceScore(sources)
-      };
+        const sources = this.extractSources(response);
+        const score = this.calculateOSINTScore(sources);
+        
+        logger.info(`Reverse image search terminé: ${sources.length} sources trouvées`);
+        
+        return {
+          sources,
+          score,
+          occurrenceCount: sources.length,
+          earliestDate: this.findEarliestDate(sources),
+          latestDate: this.findLatestDate(sources),
+          coherenceScore: this.calculateCoherenceScore(sources)
+        };
+      } catch (apiError) {
+        // Si Google Lens ne fonctionne pas, essayer Google Images avec recherche visuelle
+        logger.warn('Google Lens non disponible, tentative avec Google Images...');
+        
+        try {
+          const response = await this.client.search({
+            engine: 'google_images',
+            image: `data:image/jpeg;base64,${base64Image}`,
+            api_key: this.apiKey
+          });
+
+          const sources = this.extractSources(response);
+          const score = this.calculateOSINTScore(sources);
+          
+          logger.info(`Reverse image search (Google Images) terminé: ${sources.length} sources trouvées`);
+          
+          return {
+            sources,
+            score,
+            occurrenceCount: sources.length,
+            earliestDate: this.findEarliestDate(sources),
+            latestDate: this.findLatestDate(sources),
+            coherenceScore: this.calculateCoherenceScore(sources)
+          };
+        } catch (fallbackError) {
+          logger.error('Erreur lors du reverse image search (fallback):', fallbackError);
+          throw fallbackError;
+        }
+      }
     } catch (error) {
       logger.error('Erreur lors du reverse image search:', error);
       return {
