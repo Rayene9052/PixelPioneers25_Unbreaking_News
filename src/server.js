@@ -87,18 +87,26 @@ async function startServer() {
       'HIVE_ACCESS_KEY',
       'HIVE_SECRET_KEY',
       'SERPAPI_KEY',
-      'OPENAI_API_KEY',
+      'OPENAI_API_KEY'
+    ];
+    
+    const optionalEnvVars = [
       'HEDERA_ACCOUNT_ID',
       'HEDERA_PRIVATE_KEY'
     ];
     
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    const missingOptional = optionalEnvVars.filter(varName => !process.env[varName]);
     
     if (missingVars.length > 0) {
-      logger.warn(`⚠️  Variables d'environnement manquantes: ${missingVars.join(', ')}`);
+      logger.warn(`⚠️  Variables d'environnement requises manquantes: ${missingVars.join(', ')}`);
       logger.warn('Certaines fonctionnalités peuvent ne pas fonctionner correctement.');
     } else {
-      logger.info('✅ Toutes les clés API sont configurées');
+      logger.info('✅ Toutes les clés API requises sont configurées');
+    }
+    
+    if (missingOptional.length === optionalEnvVars.length) {
+      logger.info('ℹ️  Hedera non configuré - les analyses fonctionneront sans traçabilité blockchain');
     }
   });
 }

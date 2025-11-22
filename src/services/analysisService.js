@@ -20,11 +20,18 @@ class AnalysisService {
     this.osintService = new OSINTService(config.serpApiKey);
     this.nlpService = new NLPService(config.openaiApiKey);
     this.sourceReliabilityService = new SourceReliabilityService(config.openaiApiKey);
-    this.hederaService = new HederaService(
-      config.hederaAccountId,
-      config.hederaPrivateKey,
-      config.hederaNetwork
-    );
+    
+    // Hedera est optionnel - seulement si les clés sont fournies
+    if (config.hederaAccountId && config.hederaPrivateKey) {
+      this.hederaService = new HederaService(
+        config.hederaAccountId,
+        config.hederaPrivateKey,
+        config.hederaNetwork
+      );
+    } else {
+      this.hederaService = null;
+      logger.info('Hedera non configuré - les analyses fonctionneront sans traçabilité blockchain');
+    }
   }
 
   /**
@@ -118,19 +125,29 @@ class AnalysisService {
         };
       }
 
-      // 6. Enregistrement sur Hedera
-      analysisResult.hedera = await this.hederaService.recordHash(analysisResult.hash, {
-        score: 0, // Sera mis à jour après calcul
-        fileType: 'image',
-        analysisSummary: 'Analyse en cours'
-      });
-      logger.info('Enregistrement Hedera terminé');
+      // 6. Enregistrement sur Hedera (optionnel)
+      if (this.hederaService) {
+        analysisResult.hedera = await this.hederaService.recordHash(analysisResult.hash, {
+          score: 0, // Sera mis à jour après calcul
+          fileType: 'image',
+          analysisSummary: 'Analyse en cours'
+        });
+        logger.info('Enregistrement Hedera terminé');
+      } else {
+        analysisResult.hedera = {
+          success: false,
+          fileId: null,
+          transactionId: null,
+          proof: null,
+          message: 'Hedera non configuré'
+        };
+      }
 
       // 7. Calcul du score final
       analysisResult.finalScore = this.calculateFinalScore(analysisResult);
       
-      // 8. Mise à jour de l'enregistrement Hedera avec le score final
-      if (analysisResult.hedera.success) {
+      // 8. Mise à jour de l'enregistrement Hedera avec le score final (si configuré)
+      if (this.hederaService && analysisResult.hedera.success) {
         await this.hederaService.recordHash(analysisResult.hash, {
           score: analysisResult.finalScore,
           fileType: 'image',
@@ -277,12 +294,22 @@ class AnalysisService {
         };
       }
 
-      // 7. Enregistrement Hedera
-      analysisResult.hedera = await this.hederaService.recordHash(analysisResult.hash, {
-        score: 0,
-        fileType: 'video',
-        analysisSummary: 'Analyse en cours'
-      });
+      // 7. Enregistrement Hedera (optionnel)
+      if (this.hederaService) {
+        analysisResult.hedera = await this.hederaService.recordHash(analysisResult.hash, {
+          score: 0,
+          fileType: 'video',
+          analysisSummary: 'Analyse en cours'
+        });
+      } else {
+        analysisResult.hedera = {
+          success: false,
+          fileId: null,
+          transactionId: null,
+          proof: null,
+          message: 'Hedera non configuré'
+        };
+      }
 
       // 8. Calcul du score final
       analysisResult.finalScore = this.calculateFinalScore(analysisResult);
@@ -425,12 +452,22 @@ class AnalysisService {
         credibilityReduction: 0
       };
 
-      // 8. Enregistrement Hedera
-      analysisResult.hedera = await this.hederaService.recordHash(analysisResult.hash, {
-        score: 0,
-        fileType: 'pdf',
-        analysisSummary: 'Analyse en cours'
-      });
+      // 8. Enregistrement Hedera (optionnel)
+      if (this.hederaService) {
+        analysisResult.hedera = await this.hederaService.recordHash(analysisResult.hash, {
+          score: 0,
+          fileType: 'pdf',
+          analysisSummary: 'Analyse en cours'
+        });
+      } else {
+        analysisResult.hedera = {
+          success: false,
+          fileId: null,
+          transactionId: null,
+          proof: null,
+          message: 'Hedera non configuré'
+        };
+      }
 
       // 9. Calcul du score final
       analysisResult.finalScore = this.calculateFinalScore(analysisResult);
