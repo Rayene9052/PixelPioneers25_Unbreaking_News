@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { getJson } from "serpapi";
-=======
-import { getJson } from 'serpapi';
->>>>>>> 19f3bc5825a4035a2dc0a1fe8aac079df0ae3f63
 import logger from '../config/logger.js';
 import { readFileSync } from 'fs';
 import crypto from 'crypto';
@@ -17,33 +13,19 @@ class OSINTService {
   async reverseImageSearch(imagePath) {
     try {
       logger.info('Démarrage du reverse image search...');
-<<<<<<< HEAD
-      
-      if (!this.apiKey) {
-        logger.warn('Clé SerpAPI non configurée');
-        return this.getDefaultResult('Clé API non configurée');
-      }
-
-=======
->>>>>>> 19f3bc5825a4035a2dc0a1fe8aac079df0ae3f63
       const imageBuffer = readFileSync(imagePath);
       const base64Image = imageBuffer.toString('base64');
 
       // Essayer avec google_lens
       let response;
       try {
-<<<<<<< HEAD
         const response = await getJson({
-=======
-        response = await getJson({
->>>>>>> 19f3bc5825a4035a2dc0a1fe8aac079df0ae3f63
           engine: 'google_lens',
           image: `data:image/jpeg;base64,${base64Image}`,
           api_key: this.apiKey
         });
       } catch (apiError) {
         logger.warn('Google Lens non disponible, tentative avec Google Images...');
-<<<<<<< HEAD
         
         try {
           const response = await getJson({
@@ -69,13 +51,6 @@ class OSINTService {
           logger.error('Erreur lors du reverse image search (fallback):', fallbackError);
           return this.getDefaultResult(fallbackError.message);
         }
-=======
-        response = await getJson({
-          engine: 'google_images',
-          image: `data:image/jpeg;base64,${base64Image}`,
-          api_key: this.apiKey
-        });
->>>>>>> 19f3bc5825a4035a2dc0a1fe8aac079df0ae3f63
       }
 
       const sources = this.extractSources(response);
@@ -97,7 +72,6 @@ class OSINTService {
     }
   }
 
-<<<<<<< HEAD
   /**
    * Retourne un résultat par défaut en cas d'erreur
    */
@@ -156,14 +130,6 @@ class OSINTService {
       const response = await getJson({
         engine: 'google',
         q: `"${searchQuery}"`,
-=======
-  async searchText(text, maxResults = 20) {
-    try {
-      logger.info('Recherche du texte en ligne...');
-      const response = await getJson({
-        engine: 'google',
-        q: `"${text.substring(0, 200)}"`,
->>>>>>> 19f3bc5825a4035a2dc0a1fe8aac079df0ae3f63
         num: maxResults,
         api_key: this.apiKey
       });
@@ -196,7 +162,6 @@ class OSINTService {
     }
   }
 
-<<<<<<< HEAD
   /**
    * Extrait des phrases clés du texte pour la recherche
    */
@@ -209,8 +174,6 @@ class OSINTService {
   /**
    * Extrait les sources des résultats de reverse image search
    */
-=======
->>>>>>> 19f3bc5825a4035a2dc0a1fe8aac079df0ae3f63
   extractSources(serpResponse) {
     const sources = [];
 
