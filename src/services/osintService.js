@@ -13,13 +13,20 @@ class OSINTService {
   async reverseImageSearch(imagePath) {
     try {
       logger.info('Démarrage du reverse image search...');
+      
+      // Vérifier si la clé API est configurée
+      if (!this.apiKey) {
+        logger.warn('Clé SerpAPI non configurée');
+        return this.getDefaultResult('Clé API non configurée');
+      }
+
       const imageBuffer = readFileSync(imagePath);
       const base64Image = imageBuffer.toString('base64');
 
       // Essayer avec google_lens
       let response;
       try {
-        const response = await getJson({
+        response = await getJson({
           engine: 'google_lens',
           image: `data:image/jpeg;base64,${base64Image}`,
           api_key: this.apiKey
@@ -28,31 +35,18 @@ class OSINTService {
         logger.warn('Google Lens non disponible, tentative avec Google Images...');
         
         try {
-          const response = await getJson({
+          response = await getJson({
             engine: 'google_images',
             image: `data:image/jpeg;base64,${base64Image}`,
             api_key: this.apiKey
           });
-
-          const sources = this.extractSources(response);
-          const score = this.calculateOSINTScore(sources);
-          
-          logger.info(`Reverse image search (Google Images) terminé: ${sources.length} sources trouvées`);
-          
-          return {
-            sources,
-            score,
-            occurrenceCount: sources.length,
-            earliestDate: this.findEarliestDate(sources),
-            latestDate: this.findLatestDate(sources),
-            coherenceScore: this.calculateCoherenceScore(sources)
-          };
         } catch (fallbackError) {
           logger.error('Erreur lors du reverse image search (fallback):', fallbackError);
           return this.getDefaultResult(fallbackError.message);
         }
       }
 
+      // Si on arrive ici, on a une réponse valide
       const sources = this.extractSources(response);
       const score = this.calculateOSINTScore(sources);
 
