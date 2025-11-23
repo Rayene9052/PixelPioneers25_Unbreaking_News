@@ -1,7 +1,9 @@
-import SerpApi from 'serpapi';
+import { getJson } from "serpapi";
 import logger from '../config/logger.js';
 import { readFileSync } from 'fs';
 import crypto from 'crypto';
+import FormData from 'form-data';
+import fetch from 'node-fetch';
 
 /**
  * Service OSINT utilisant SerpAPI pour reverse image search et recherche de texte
@@ -9,7 +11,6 @@ import crypto from 'crypto';
 class OSINTService {
   constructor(apiKey) {
     this.apiKey = apiKey;
-    this.client = new SerpApi(apiKey);
   }
 
   /**
@@ -19,13 +20,18 @@ class OSINTService {
     try {
       logger.info('Démarrage du reverse image search...');
       
+      if (!this.apiKey) {
+        logger.warn('Clé SerpAPI non configurée');
+        return this.getDefaultResult('Clé API non configurée');
+      }
+
       const imageBuffer = readFileSync(imagePath);
       const base64Image = imageBuffer.toString('base64');
       
       // Utilisation de SerpAPI avec Google Lens pour reverse image search
       // SerpAPI supporte l'upload d'image via base64
       try {
-        const response = await this.client.search({
+        const response = await getJson({
           engine: 'google_lens',
           image: `data:image/jpeg;base64,${base64Image}`,
           api_key: this.apiKey
@@ -49,7 +55,7 @@ class OSINTService {
         logger.warn('Google Lens non disponible, tentative avec Google Images...');
         
         try {
-          const response = await this.client.search({
+          const response = await getJson({
             engine: 'google_images',
             image: `data:image/jpeg;base64,${base64Image}`,
             api_key: this.apiKey
@@ -70,21 +76,29 @@ class OSINTService {
           };
         } catch (fallbackError) {
           logger.error('Erreur lors du reverse image search (fallback):', fallbackError);
-          throw fallbackError;
+          return this.getDefaultResult(fallbackError.message);
         }
       }
     } catch (error) {
       logger.error('Erreur lors du reverse image search:', error);
-      return {
-        sources: [],
-        score: 50,
-        occurrenceCount: 0,
-        earliestDate: null,
-        latestDate: null,
-        coherenceScore: 50,
-        error: error.message
-      };
+      return this.getDefaultResult(error.message);
     }
+  }
+
+  /**
+   * Retourne un résultat par défaut en cas d'erreur
+   */
+  getDefaultResult(errorMessage) {
+    return {
+      sources: [],
+      score: 50,
+      occurrenceCount: 0,
+      earliestDate: null,
+      latestDate: null,
+      coherenceScore: 50,
+      error: errorMessage,
+      description: 'Reverse image search non disponible'
+    };
   }
 
   /**
@@ -94,10 +108,41 @@ class OSINTService {
     try {
       logger.info('Recherche du texte en ligne...');
       
+      if (!this.apiKey) {
+        logger.warn('Clé SerpAPI non configurée');
+        return {
+          sources: [],
+          score: 50,
+          occurrenceCount: 0,
+          earliestDate: null,
+          latestDate: null,
+          coherenceScore: 50,
+          error: 'Clé API non configurée',
+          description: 'Recherche texte non disponible'
+        };
+      }
+
+      if (!text || text.trim().length < 20) {
+        logger.warn('Texte trop court pour recherche');
+        return {
+          sources: [],
+          score: 50,
+          occurrenceCount: 0,
+          earliestDate: null,
+          latestDate: null,
+          coherenceScore: 50,
+          description: 'Texte insuffisant pour recherche'
+        };
+      }
+      
+      // Extraire des phrases clés pour la recherche
+      const keyPhrases = this.extractKeyPhrases(text);
+      const searchQuery = keyPhrases[0] || text.substring(0, 100);
+      
       // Recherche Google avec SerpAPI
-      const response = await this.client.search({
+      const response = await getJson({
         engine: 'google',
-        q: `"${text.substring(0, 200)}"`, // Limite à 200 caractères pour la requête
+        q: `"${searchQuery}"`,
         num: maxResults,
         api_key: this.apiKey
       });
@@ -124,9 +169,19 @@ class OSINTService {
         earliestDate: null,
         latestDate: null,
         coherenceScore: 50,
-        error: error.message
+        error: error.message,
+        description: 'Recherche texte non disponible'
       };
     }
+  }
+
+  /**
+   * Extrait des phrases clés du texte pour la recherche
+   */
+  extractKeyPhrases(text) {
+    // Extraire les phrases les plus significatives (simplifié)
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 20);
+    return sentences.slice(0, 3).map(s => s.trim().substring(0, 100));
   }
 
   /**
@@ -268,6 +323,11 @@ class OSINTService {
     return crypto.createHash('md5').update(buffer).digest('hex');
   }
 }
+
+
+
+
+
 
 export default OSINTService;
 

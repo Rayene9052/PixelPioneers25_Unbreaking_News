@@ -104,3 +104,5 @@ Write-Host ""
 Write-Host "Note: Les tests d'upload nécessitent des fichiers de test." -ForegroundColor Yellow
 Write-Host "Créez des fichiers test_image.jpg, test_document.pdf, ou test_video.mp4 pour tester les uploads." -ForegroundColor Yellow
 
+
+

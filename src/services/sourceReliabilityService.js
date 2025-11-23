@@ -7,7 +7,12 @@ import logger from '../config/logger.js';
  */
 class SourceReliabilityService {
   constructor(apiKey) {
-    this.openai = new OpenAI({ apiKey });
+    if (!apiKey) {
+      logger.warn('Clé OpenAI non configurée pour SourceReliabilityService');
+      this.openai = null;
+    } else {
+      this.openai = new OpenAI({ apiKey });
+    }
     
     // Liste de domaines connus comme fiables (peut être étendue)
     this.trustedDomains = [
@@ -121,8 +126,19 @@ class SourceReliabilityService {
         return quickCheck;
       }
 
-      // Analyse approfondie avec GPT
-      const gptAnalysis = await this.analyzeWithGPT(url, domain, title, snippet);
+      // Analyse approfondie avec GPT (si disponible)
+      let gptAnalysis;
+      if (this.openai) {
+        gptAnalysis = await this.analyzeWithGPT(url, domain, title, snippet);
+      } else {
+        // Si OpenAI n'est pas configuré, utiliser uniquement la vérification rapide
+        gptAnalysis = {
+          score: quickCheck.score,
+          isReliable: quickCheck.isReliable,
+          reasons: ['Analyse GPT non disponible'],
+          confidence: quickCheck.confidence * 0.7
+        };
+      }
       
       // Combinaison des résultats (pondération: 30% vérification rapide, 70% analyse GPT)
       const combinedScore = Math.round((quickCheck.score * 0.3 + gptAnalysis.score * 0.7));
@@ -213,6 +229,14 @@ class SourceReliabilityService {
    * Analyse approfondie avec GPT
    */
   async analyzeWithGPT(url, domain, title, snippet) {
+    if (!this.openai) {
+      return {
+        score: 50,
+        isReliable: false,
+        reasons: ['OpenAI non configuré'],
+        confidence: 0
+      };
+    }
     try {
       const prompt = `Analyse la fiabilité et la crédibilité de cette source web en tant qu'expert en fact-checking et vérification de sources.
 

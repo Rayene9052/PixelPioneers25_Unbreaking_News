@@ -1,5 +1,6 @@
 import logger from '../config/logger.js';
 import { readFileSync } from 'fs';
+import fetch from 'node-fetch';
 
 /**
  * Service d'analyse forensique utilisant Hive AI
@@ -20,14 +21,26 @@ class ForensicService {
     try {
       logger.info('Démarrage de l\'analyse forensique de l\'image...');
       
+      if (!this.accessKey && !this.apiKey) {
+        logger.warn('Clés Hive AI non configurées');
+        return {
+          manipulationScore: 50,
+          deepfakeScore: 50,
+          errorLevelScore: 50,
+          description: 'Analyse forensique non disponible - clés API manquantes',
+          signals: [],
+          confidence: 0
+        };
+      }
+
       const imageBuffer = readFileSync(imagePath);
       const base64Image = imageBuffer.toString('base64');
       
       // Appel à l'API Hive AI
       // Utilisation de l'access key pour l'authentification
-      // Le secret key est disponible si nécessaire pour la signature des requêtes
       const authToken = this.accessKey || this.apiKey;
       
+      // Hive AI accepte les images en base64 dans le body JSON
       const response = await fetch(`${this.baseUrl}/task/sync`, {
         method: 'POST',
         headers: {
@@ -42,7 +55,20 @@ class ForensicService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error('Erreur API Hive AI:', errorText);
+        logger.error(`Erreur API Hive AI (${response.status}):`, errorText);
+        
+        // Si c'est une erreur d'authentification, retourner un résultat par défaut
+        if (response.status === 401 || response.status === 403) {
+          return {
+            manipulationScore: 50,
+            deepfakeScore: 50,
+            errorLevelScore: 50,
+            description: 'Erreur d\'authentification Hive AI - vérifiez vos clés API',
+            signals: [],
+            confidence: 0
+          };
+        }
+        
         throw new Error(`Hive AI API error: ${response.status} - ${errorText}`);
       }
 

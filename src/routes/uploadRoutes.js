@@ -158,6 +158,7 @@ router.post('/upload-pdf', upload.single('pdf'), async (req, res) => {
 
 /**
  * Route GET /health
+ * 
  * Vérification de l'état du serveur
  */
 router.get('/health', (req, res) => {

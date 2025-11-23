@@ -6,7 +6,12 @@ import logger from '../config/logger.js';
  */
 class NLPService {
   constructor(apiKey) {
-    this.openai = new OpenAI({ apiKey });
+    if (!apiKey) {
+      logger.warn('Clé OpenAI non configurée');
+      this.openai = null;
+    } else {
+      this.openai = new OpenAI({ apiKey });
+    }
   }
 
   /**
@@ -15,6 +20,21 @@ class NLPService {
   async analyzeText(text) {
     try {
       logger.info('Démarrage de l\'analyse sémantique avec GPT...');
+      
+      if (!this.openai) {
+        logger.warn('OpenAI non configuré');
+        return {
+          score: 50,
+          contradictions: [],
+          propagandaIndicators: [],
+          generatedContentIndicators: [],
+          hallucinations: [],
+          internalInconsistencies: [],
+          biasIndicators: [],
+          description: 'Analyse NLP non disponible - clé API manquante',
+          confidence: 0
+        };
+      }
       
       if (!text || text.trim().length < 50) {
         logger.warn('Texte trop court pour l\'analyse NLP');
@@ -107,6 +127,15 @@ Réponds en JSON avec cette structure:
    */
   async analyzePDFStructure(pdfText, pdfMetadata) {
     try {
+      if (!this.openai) {
+        logger.warn('OpenAI non configuré pour analyse PDF');
+        return {
+          integrityScore: 50,
+          issues: [],
+          description: 'Analyse PDF non disponible - clé API manquante'
+        };
+      }
+
       const prompt = `Analyse la structure et l'intégrité de ce document PDF basé sur son contenu texte et ses métadonnées.
 
 Métadonnées:
