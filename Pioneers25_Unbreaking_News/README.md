@@ -108,12 +108,16 @@ npm run test:coverage
 
 ## Base de Données
 
-Le projet utilise PostgreSQL avec Sequelize. Pour initialiser la base de données :
+Le projet utilise PostgreSQL avec Sequelize (ou SQLite en développement). 
+
+**⚠️ IMPORTANT : Initialiser la base de données avant d'utiliser l'API :**
 
 ```bash
-# Créer les tables (nécessite une migration Sequelize ou script SQL)
-# Les modèles sont définis dans models/
+# Créer toutes les tables nécessaires
+npm run init-db
 ```
+
+Cette commande doit être exécutée **une fois** avant de démarrer le serveur pour la première fois.
 
 ## Notes
 

@@ -9,7 +9,8 @@
     "test": "jest --testTimeout=10000",
     "test:watch": "jest --watch --testTimeout=10000",
     "test:coverage": "jest --coverage --testTimeout=10000",
-    "test:api": "node test-api.js"
+    "test:api": "node test-api.js",
+    "init-db": "node scripts/init-db.js"
   },
   "keywords": [
     "histified",

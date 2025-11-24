@@ -11,7 +11,11 @@ router.get('/content/:content_id', async (req, res) => {
   try {
     const content = await Content.findByPk(req.params.content_id);
     if (!content) {
-      return res.status(404).json({ error: 'Contenu non trouvé' });
+      return res.status(404).json({ 
+        error: 'Contenu non trouvé',
+        message: `Aucun contenu trouvé avec l'ID ${req.params.content_id}`,
+        hint: 'Assurez-vous d\'avoir uploadé un fichier et d\'utiliser le content_id retourné'
+      });
     }
 
     const analysis = await ContentAnalysis.findOne({

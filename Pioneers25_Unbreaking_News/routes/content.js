@@ -69,8 +69,13 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       status: 'uploaded'
     });
   } catch (error) {
-    console.error('Erreur lors de l\'upload:', error);
-    res.status(500).json({ error: 'Erreur lors de l\'upload', message: error.message });
+    console.error('❌ Erreur lors de l\'upload:', error);
+    console.error('Stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Erreur lors de l\'upload', 
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -86,7 +91,11 @@ router.post('/analyze', async (req, res) => {
     // Récupérer le contenu
     const content = await Content.findByPk(content_id);
     if (!content) {
-      return res.status(404).json({ error: 'Contenu non trouvé' });
+      return res.status(404).json({ 
+        error: 'Contenu non trouvé',
+        message: `Aucun contenu trouvé avec l'ID ${content_id}`,
+        hint: 'Assurez-vous d\'avoir uploadé un fichier et d\'utiliser le content_id retourné par /upload'
+      });
     }
 
     // Vérifier que le fichier existe

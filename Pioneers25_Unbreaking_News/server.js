@@ -4,7 +4,20 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 const app = express();
+
+// Créer les dossiers nécessaires
+const uploadDir = process.env.UPLOAD_DIR || './uploads';
+const archiveDir = process.env.ARCHIVE_DIR || './archives';
+
+[uploadDir, archiveDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`📁 Dossier créé: ${dir}`);
+  }
+});
 
 // Middleware
 app.use(cors());
@@ -35,14 +48,16 @@ app.get('/health', (req, res) => {
 
 // Gestion des erreurs
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('❌ Erreur:', err);
+  console.error('Stack:', err.stack);
   res.status(500).json({
     error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    details: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
-const PORT = process.env.PORT || 8003;
+const PORT = process.env.PORT || 8002;
 
 app.listen(PORT, () => {
   console.log(`Histified Backend running on port ${PORT}`);
