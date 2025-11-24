@@ -1,0 +1,14 @@
+node_modules
+.next/
+.turbo/
+.vercel/
+
+# Env files
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
